@@ -314,7 +314,7 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                     )
                 );
               }),
-              IconButton(icon: Icon(Icons.subdirectory_arrow_right), onPressed: () async {
+              IconButton(icon: Icon(CustomIcons.logout, size:16), onPressed: () async {
                 if (!kIsWeb && Platform.isAndroid) {
                   await MyApp().removeCacheFile();
                 }
@@ -381,6 +381,16 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                   ),
                   Divider(color: Theme.of(context).colorScheme.primary),
                   ListTile(
+                    leading: Icon(CustomIcons.features, color: Theme.of(context).colorScheme.primary),
+                    title: Text('Features'),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => ComingSoonPage()
+                      ));
+                    },
+                  ),
+                  Divider(color: Theme.of(context).colorScheme.primary),
+                  ListTile(
                     leading: Icon(Icons.payment, color: Theme.of(context).colorScheme.primary),
                     title: Text('Payments'),
                     onTap: () {
@@ -439,6 +449,28 @@ class _FinanceTabState extends State<FinanceTab> {
                 crossAxisCount: 3,
                 scrollDirection: Axis.vertical,
                 children: List.generate(vehicleSegments.length,(index) {
+                  Icon segmentIcon;
+                  if(vehicleSegments[index]['NAME'].toString().contains('CONSTRUCTION VEHICLE')) {
+                    segmentIcon = Icon(CustomIcons.constructionvehicle, size: 50, color: Theme.of(context).colorScheme.primary);
+                  } else if(vehicleSegments[index]['NAME'].toString().contains('FARM EQUIPMENT')) {
+                    segmentIcon = Icon(CustomIcons.farmequipment, size: 30, color: Theme.of(context).colorScheme.primary);
+                  } else if(vehicleSegments[index]['NAME'].toString().contains('LCV')) {
+                    segmentIcon = Icon(CustomIcons.lcv, size: 50, color: Theme.of(context).colorScheme.primary);
+                  } else if(vehicleSegments[index]['NAME'].toString().contains('MACHINERY')) {
+                    segmentIcon = Icon(CustomIcons.machinery, size: 50, color: Theme.of(context).colorScheme.primary);
+                  } else if(vehicleSegments[index]['NAME'].toString().contains('MHCV')) {
+                    segmentIcon = Icon(CustomIcons.mhcv, size: 40, color: Theme.of(context).colorScheme.primary);
+                  } else if(vehicleSegments[index]['NAME'].toString().contains('PASSENGER 3WHEELER')) {
+                    segmentIcon = Icon(CustomIcons.threewheeler, size: 30, color: Theme.of(context).colorScheme.primary);
+                  } else if(vehicleSegments[index]['NAME'].toString().contains('PASSENGER COMMERCIAL')) {
+                    segmentIcon = Icon(CustomIcons.passengercommercial, size: 40, color: Theme.of(context).colorScheme.primary);
+                  } else if(vehicleSegments[index]['NAME'].toString().contains('PRIVATE CAR')) {
+                    segmentIcon = Icon(CustomIcons.privatecar, size: 50, color: Theme.of(context).colorScheme.primary);
+                  } else if(vehicleSegments[index]['NAME'].toString().contains('TWO WHEELER')) {
+                    segmentIcon = Icon(CustomIcons.twowheeler, size: 50, color: Theme.of(context).colorScheme.primary);
+                  } else {
+                    segmentIcon = Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary);
+                  }
                   return Container(
                     child: Card(
                       elevation: 3.0,
@@ -451,17 +483,20 @@ class _FinanceTabState extends State<FinanceTab> {
                         child: Column(
                           children: [
                             Text(vehicleSegments[index]['NAME'], textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
-                            ((vehicleSegments[index]['NAME']).toString().length > 13)? SizedBox() : SizedBox(height: 12),
-                            IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: () {
-                              Navigator.push(context, MaterialPageRoute(
-                                  builder: (_) => FinanceApplicationForm(
-                                      name: widget.name,
-                                      mobile: widget.mobile,
-                                      vehiclesegmentindex: index,
-                                      vehiclesegment: vehicleSegments[index]['NAME']
-                                  )
-                              ));
-                            }),
+                            Transform(
+                              alignment: Alignment.center,
+                              transform: Matrix4.rotationY(pi),
+                              child: IconButton(icon: segmentIcon, onPressed: () {
+                                Navigator.push(context, MaterialPageRoute(
+                                    builder: (_) => FinanceApplicationForm(
+                                        name: widget.name,
+                                        mobile: widget.mobile,
+                                        vehiclesegmentindex: index,
+                                        vehiclesegment: vehicleSegments[index]['NAME']
+                                    )
+                                ));
+                              }),
+                            ),
                           ],
                         ),
                       ),
@@ -507,7 +542,7 @@ class _FinanceTabState extends State<FinanceTab> {
                       Transform(
                         alignment: Alignment.center,
                         transform: Matrix4.rotationY(pi),
-                        child: IconButton(icon: Icon(CustomIcons.truck_1, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        child: IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
                       ),
                     ],
                   ),
@@ -855,7 +890,7 @@ class _InsuranceTabState extends State<InsuranceTab> {
                   Transform(
                     alignment: Alignment.center,
                     transform: Matrix4.rotationY(pi),
-                    child: IconButton(icon: Icon(CustomIcons.truck_1, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                    child: IconButton(icon: Icon(CustomIcons.generalinsurance, color: Theme.of(context).colorScheme.primary), onPressed: null),
                   ),
                 ],
               ),
@@ -917,7 +952,7 @@ class _InsuranceTabState extends State<InsuranceTab> {
                               transform: Matrix4.rotationY(pi),
                               child: IconButton(
                                   iconSize: 30,
-                                  icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary),
+                                  icon: Icon(CustomIcons.vehicleinsurance, color: Theme.of(context).colorScheme.primary),
                                   onPressed: () async {
                                     setState(() {
                                       vehicleInsurancePressed = true;
@@ -950,6 +985,7 @@ class _InsuranceTabState extends State<InsuranceTab> {
                         child: ListView(
                           children: <Widget>[
                             Text('Life Insurance', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
+                            SizedBox(height: 10),
                             IconButton(
                                 iconSize: 30,
                                 icon: Icon(CustomIcons.lifeinsurance, color: Theme.of(context).colorScheme.primary),
@@ -1008,6 +1044,28 @@ class _InsuranceTabState extends State<InsuranceTab> {
                     crossAxisCount: 3,
                     scrollDirection: Axis.vertical,
                     children: List.generate(vehicleSegments.length,(index) {
+                      Icon segmentIcon;
+                      if(vehicleSegments[index]['NAME'].toString().contains('CONSTRUCTION VEHICLE')) {
+                        segmentIcon = Icon(CustomIcons.constructionvehicle, size: 50, color: Theme.of(context).colorScheme.primary);
+                      } else if(vehicleSegments[index]['NAME'].toString().contains('FARM EQUIPMENT')) {
+                        segmentIcon = Icon(CustomIcons.farmequipment, size: 30, color: Theme.of(context).colorScheme.primary);
+                      } else if(vehicleSegments[index]['NAME'].toString().contains('LCV')) {
+                        segmentIcon = Icon(CustomIcons.lcv, size: 50, color: Theme.of(context).colorScheme.primary);
+                      } else if(vehicleSegments[index]['NAME'].toString().contains('MACHINERY')) {
+                        segmentIcon = Icon(CustomIcons.machinery, size: 50, color: Theme.of(context).colorScheme.primary);
+                      } else if(vehicleSegments[index]['NAME'].toString().contains('MHCV')) {
+                        segmentIcon = Icon(CustomIcons.mhcv, size: 40, color: Theme.of(context).colorScheme.primary);
+                      } else if(vehicleSegments[index]['NAME'].toString().contains('PASSENGER 3WHEELER')) {
+                        segmentIcon = Icon(CustomIcons.threewheeler, size: 30, color: Theme.of(context).colorScheme.primary);
+                      } else if(vehicleSegments[index]['NAME'].toString().contains('PASSENGER COMMERCIAL')) {
+                        segmentIcon = Icon(CustomIcons.passengercommercial, size: 40, color: Theme.of(context).colorScheme.primary);
+                      } else if(vehicleSegments[index]['NAME'].toString().contains('PRIVATE CAR')) {
+                        segmentIcon = Icon(CustomIcons.privatecar, size: 50, color: Theme.of(context).colorScheme.primary);
+                      } else if(vehicleSegments[index]['NAME'].toString().contains('TWO WHEELER')) {
+                        segmentIcon = Icon(CustomIcons.twowheeler, size: 50, color: Theme.of(context).colorScheme.primary);
+                      } else {
+                        segmentIcon = Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary);
+                      }
                       return Container(
                         child: Card(
                           elevation: 3.0,
@@ -1021,17 +1079,21 @@ class _InsuranceTabState extends State<InsuranceTab> {
                               children: [
                                 Text(vehicleSegments[index]['NAME'], textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
                                 ((vehicleSegments[index]['NAME']).toString().length > 13)? SizedBox() : SizedBox(height: 12),
-                                IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: () {
-                                  Navigator.push(context, MaterialPageRoute(
-                                      builder: (_) => InsuranceApplicationForm(
-                                          name: widget.name,
-                                          mobile: widget.mobile,
-                                          insurancetype: 'vehicle',
-                                          vehiclesegmentindex: index,
-                                          vehiclesegment: vehicleSegments[index]['NAME']
-                                      )
-                                  ));
-                                }),
+                                Transform(
+                                  alignment: Alignment.center,
+                                  transform: Matrix4.rotationY(pi),
+                                  child: IconButton(icon: segmentIcon, onPressed: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                        builder: (_) => InsuranceApplicationForm(
+                                            name: widget.name,
+                                            mobile: widget.mobile,
+                                            insurancetype: 'vehicle',
+                                            vehiclesegmentindex: index,
+                                            vehiclesegment: vehicleSegments[index]['NAME']
+                                        )
+                                    ));
+                                  }),
+                                ),
                               ],
                             ),
                           ),
@@ -1144,7 +1206,7 @@ class _InsuranceApplicationFormState extends State<InsuranceApplicationForm> {
                               ),
                             ),
                           ),
-                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                          IconButton(icon: Icon(CustomIcons.vehicleinsurance, color: Theme.of(context).colorScheme.primary), onPressed: null),
                         ],
                       ),
                     ) :
@@ -1164,7 +1226,7 @@ class _InsuranceApplicationFormState extends State<InsuranceApplicationForm> {
                               ),
                             ),
                           ),
-                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                          IconButton(icon: Icon(CustomIcons.generalinsurance, size: 30, color: Theme.of(context).colorScheme.primary), onPressed: null),
                         ],
                       ),
                     ),
@@ -1324,7 +1386,7 @@ class _InsuranceApplicationFormState extends State<InsuranceApplicationForm> {
                               ),
                             ),
                           ),
-                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                          IconButton(icon: Icon(CustomIcons.generalinsurance, size: 30, color: Theme.of(context).colorScheme.primary), onPressed: null),
                         ],
                       ),
                     ),
@@ -1436,11 +1498,7 @@ class _DepositTabState extends State<DepositTab> {
                     width: 280,
                     child: Text('Invest in our deposit products, grow your wealth! '),
                   ),
-                  Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.rotationY(pi),
-                    child: IconButton(icon: Icon(CustomIcons.truck_1, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ),
+                  IconButton(icon: Icon(CustomIcons.deposithand, size: 30, color: Theme.of(context).colorScheme.primary), onPressed: null),
                 ],
               ),
             ),
@@ -1501,7 +1559,7 @@ class _DepositTabState extends State<DepositTab> {
                                   Text('Deposit', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
                                   IconButton(
                                       iconSize: 35,
-                                      icon: Icon(CustomIcons.deposit, color: Theme.of(context).colorScheme.primary),
+                                      icon: Icon(CustomIcons.depositbag, size:40, color: Theme.of(context).colorScheme.primary),
                                       onPressed: () {
                                         Navigator.push(context, MaterialPageRoute(
                                             builder: (_) => DepositApplicationForm(
@@ -1569,7 +1627,7 @@ class _DepositApplicationFormState extends State<DepositApplicationForm> {
                         ),
                       ),
                     ),
-                    IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                    IconButton(icon: Icon(CustomIcons.deposithand, size:30, color: Theme.of(context).colorScheme.primary), onPressed: null),
                   ],
                 ),
               ),
