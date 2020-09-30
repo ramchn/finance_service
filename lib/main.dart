@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/gestures.dart';
 import 'package:http/http.dart' as http;
-import 'dart:math' as math;
+import 'dart:math' show pi,pow;
 import 'dart:io';
 import 'dart:convert';
 import 'package:finance_service/app_config.dart';
@@ -23,7 +24,6 @@ class MyApp extends StatelessWidget {
     File file = new File(filePath + "/" + fileName);
     return file;
   }
-
   Future<String> getCacheData() async {
     String jsonData;
     var file = await getCacheFile();
@@ -34,7 +34,6 @@ class MyApp extends StatelessWidget {
     }
     return jsonData;
   }
-
   Future<void> removeCacheFile() async {
     var file = await getCacheFile();
     if (await file.exists()) {
@@ -57,21 +56,18 @@ class MyApp extends StatelessWidget {
       'Body': 'Your request code is ' + message
     };
     http.Response response = await http.post(url, headers: headers, body: body);
-    print(response);
     if (response.statusCode == 201) {
       print('Sending success');
     } else {
       print('Sending Failed');
       var data = jsonDecode(response.body);
-      print('Error Codde : ' + data['code'].toString());
+      print('Error Code : ' + data['code'].toString());
       print('Error Message : ' + data['message']);
       print("More info : " + data['more_info']);
     }
   }
-
-  Future<String> getFinanceData(String url) async {
+  Future<String> getHttpData(String url) async {
     http.Response response = await http.get(url);
-    print(response);
     if (response.statusCode == 200) {
       return response.body;
     } else {
@@ -82,35 +78,61 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String>(
-        future: MyApp().getCacheData(),
-        builder: (context, AsyncSnapshot<String> snapshot) {
-          if (snapshot.hasData) {
-            Map<String, dynamic> jsonMap = jsonDecode(snapshot.data);
-            var page = jsonMap['mobile'] != null ? MyHomePage(title: appName, name: jsonMap['name'], mobile: jsonMap['mobile'], tab: 0) : LoginPage(title: appName);
-            return MaterialApp(
-              title: appName,
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData(
-                primarySwatch: Colors.teal,
-                scaffoldBackgroundColor: Colors.teal[50],
-                visualDensity: VisualDensity.adaptivePlatformDensity,
-              ),
-              home: page,
-            );
-          } else {
-            return MaterialApp(
-              title: appName,
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData(
-                primarySwatch: Colors.teal,
-                visualDensity: VisualDensity.adaptivePlatformDensity,
-              ),
-              home: LoadingPage(),
-            );
-          }
-        }
-    );
+    Widget widget;
+    if (kIsWeb) {
+      widget = MaterialApp(
+        title: appName,
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          primarySwatch: Colors.teal,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        home: LoginPage(title: appName),
+      );
+    } else {
+      if (Platform.isAndroid) {
+        widget = FutureBuilder<String>(
+            future: MyApp().getCacheData(),
+            builder: (context, AsyncSnapshot<String> snapshot) {
+              if (snapshot.hasData) {
+                Map<String, dynamic> jsonMap = jsonDecode(snapshot.data);
+                var page = jsonMap['mobile'] != null ? MyHomePage(title: appName, name: jsonMap['name'], mobile: jsonMap['mobile'], tab: 0) : LoginPage(title: appName);
+                return MaterialApp(
+                  title: appName,
+                  debugShowCheckedModeBanner: false,
+                  theme: ThemeData(
+                    primarySwatch: Colors.teal,
+                    scaffoldBackgroundColor: Colors.teal[50],
+                    visualDensity: VisualDensity.adaptivePlatformDensity,
+                  ),
+                  home: page,
+                );
+              } else {
+                return MaterialApp(
+                  title: appName,
+                  debugShowCheckedModeBanner: false,
+                  theme: ThemeData(
+                    primarySwatch: Colors.teal,
+                    visualDensity: VisualDensity.adaptivePlatformDensity,
+                  ),
+                  home: LoadingPage(),
+                );
+              }
+            }
+        );
+      } else if (Platform.isIOS) {
+        widget = MaterialApp(
+          title: appName,
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            primarySwatch: Colors.teal,
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+          ),
+          home: LoginPage(title: appName),
+        );
+      }
+    }
+    return widget;
   }
 }
 
@@ -218,8 +240,10 @@ class _LoginPageState extends State<LoginPage> {
                               RaisedButton(
                                   onPressed: () async {
                                     if (_formKey.currentState.validate()) {
-                                      var file = await MyApp().getCacheFile();
-                                      file.writeAsString('{"name":"'+nameController.text+'","mobile":"'+mobileController.text+'"}', flush: true, mode: FileMode.write);
+                                      if (!kIsWeb && Platform.isAndroid) {
+                                        var file = await MyApp().getCacheFile();
+                                        file.writeAsString('{"name":"'+nameController.text+'","mobile":"'+mobileController.text+'"}', flush: true, mode: FileMode.write);
+                                      }
                                       Navigator.push(context, MaterialPageRoute(
                                           builder: (_) => MyHomePage(
                                               title: widget.title,
@@ -258,7 +282,6 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   TabController tabController;
-
   @override
   void initState() {
     super.initState();
@@ -292,8 +315,9 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                 );
               }),
               IconButton(icon: Icon(Icons.subdirectory_arrow_right), onPressed: () async {
-                // clear cache
-                await MyApp().removeCacheFile();
+                if (!kIsWeb && Platform.isAndroid) {
+                  await MyApp().removeCacheFile();
+                }
                 Navigator.push(context, MaterialPageRoute(
                     builder: (_) => LoginPage(
                         title: widget.title
@@ -313,50 +337,20 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
           body: TabBarView(
               controller: tabController,
               children: <Widget>[
-                FinanceTab(),
-                InsuranceTab(),
-                DepositTab(),
+                FinanceTab(
+                  name: widget.name,
+                  mobile: widget.mobile
+                ),
+                InsuranceTab(
+                  name: widget.name,
+                  mobile: widget.mobile
+                ),
+                DepositTab(
+                  name: widget.name,
+                  mobile: widget.mobile
+                ),
               ]
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              switch(tabController.index) {
-                case 0: {
-                  Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => FinanceApplicationForm(
-                          name: widget.name,
-                          mobile: widget.mobile
-                      )
-                  ));
-                }
-                break;
-                case 1: {
-                  Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => InsuranceApplicationForm(
-                          name: widget.name,
-                          mobile: widget.mobile
-                      )
-                  ));
-                }
-                break;
-                case 2: {
-                  Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => DepositApplicationForm(
-                          name: widget.name,
-                          mobile: widget.mobile
-                      )
-                  ));
-                }
-                break;
-                default:
-                  break;
-              }
-            },
-            child: Center(
-              child: Text('Apply Now', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
-            ),
-          ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
           drawer: SizedBox(
             width: 200,
             child: Drawer(
@@ -421,8 +415,9 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
 }
 
 class FinanceTab extends StatefulWidget {
-  FinanceTab({Key key, this.title}) : super(key: key);
-  final String title;
+  FinanceTab({Key key, this.name, this.mobile}) : super(key: key);
+  final String name;
+  final String mobile;
   @override
   _FinanceTabState createState() => _FinanceTabState();
 }
@@ -430,342 +425,115 @@ class FinanceTab extends StatefulWidget {
 class _FinanceTabState extends State<FinanceTab> {
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Card(
-            child: Container(
-              height: 70,
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                border: Border (
-                  left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
+    var config = AppConfig.of(context);
+    return FutureBuilder<String>(
+      future: MyApp().getHttpData(config.financeUrl),
+      builder: (context, AsyncSnapshot<String> snapshot) {
+        Widget segments;
+        if (snapshot.hasData) {
+          Map<String, dynamic> jsonMap = jsonDecode(snapshot.data);
+          List<dynamic> vehicleSegments = jsonMap['VEHICLE SEGMENTS'];
+          segments = Container(
+            height: 360,
+            child: GridView.count(
+                crossAxisCount: 3,
+                scrollDirection: Axis.vertical,
+                children: List.generate(vehicleSegments.length,(index) {
+                  return Container(
+                    child: Card(
+                      elevation: 3.0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius : BorderRadius.all(Radius.circular(5)),
+                        side: BorderSide(width: 1, color: Theme.of(context).colorScheme.primary)
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          children: [
+                            Text(vehicleSegments[index]['NAME'], textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
+                            ((vehicleSegments[index]['NAME']).toString().length > 13)? SizedBox() : SizedBox(height: 12),
+                            IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(
+                                  builder: (_) => FinanceApplicationForm(
+                                      name: widget.name,
+                                      mobile: widget.mobile,
+                                      vehiclesegmentindex: index,
+                                      vehiclesegment: vehicleSegments[index]['NAME']
+                                  )
+                              ));
+                            }),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                })
+            ),
+          );
+        } else {
+          segments = SizedBox(
+            height: 40,
+            child: Center(
+              child: Container(
+                child: Text('Loading..')
+              )
+            )
+          );
+        }
+        return SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius : BorderRadius.all(Radius.circular(5)),
+                ),
+                child: Container(
+                  height: 70,
+                  padding: const EdgeInsets.all(12.0),
+                  decoration: BoxDecoration(
+                    border: Border (
+                      left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+                  child: ListView (
+                    scrollDirection: Axis.horizontal,
+                    children: <Widget> [
+                      Container(
+                        alignment: Alignment.center,
+                        width: 280,
+                        child: Text('Get hassle-free financing for old and new commercial vehicles'),
+                      ),
+                      Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.rotationY(pi),
+                        child: IconButton(icon: Icon(CustomIcons.truck_1, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              child: ListView (
-                scrollDirection: Axis.horizontal,
-                children: <Widget> [
-                  Container(
-                    alignment: Alignment.center,
-                    width: 280,
-                    child: Text('Get hassle-free financing for old and new commercial vehicles'),
-                  ),
-                  Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.rotationY(math.pi),
-                    child: IconButton(icon: Icon(CustomIcons.truck_1, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ),
-                ],
+              Container(
+                height: 40,
+                alignment: Alignment.topLeft,
+                padding: const EdgeInsets.all(10.0),
+                child: Text('Vehicle Segments'),
               ),
-            ),
+              segments
+            ],
           ),
-          Container(
-            height: 40,
-            alignment: Alignment.topLeft,
-            padding: const EdgeInsets.all(10.0),
-            child: Text('Vehicle Types'),
-          ),
-          Container(
-            height: 120,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: <Widget>[
-                Card(
-                  child: Container(
-                    width: 120,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                        alignment: Alignment.center,
-                        child: ListView(
-                          children: <Widget>[
-                            Transform(
-                              alignment: Alignment.center,
-                              transform: Matrix4.rotationY(math.pi),
-                              child: IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                            ),
-                            Text('Small & Light commercial vehicles', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w300))
-                          ],
-                        )
-                    ),
-                  ),
-                ),
-                Card(
-                  child: Container(
-                    width: 120,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                        alignment: Alignment.center,
-                        child: ListView(
-                          children: <Widget>[
-                            IconButton(icon: Icon(CustomIcons.truck_moving, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                            Text('Medium & heavy commercial vehicle', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w300))
-                          ],
-                        )
-                    ),
-                  ),
-                ),
-                Card(
-                  child: Container(
-                    width: 120,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                        alignment: Alignment.center,
-                        child: ListView(
-                          children: <Widget>[
-                            IconButton(iconSize: 30, icon: Icon(CustomIcons.tipper, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                            Text('Tippers and Specially-customized vehicles', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w300))
-                          ],
-                        )
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            height: 40,
-            alignment: Alignment.topLeft,
-            padding: const EdgeInsets.all(10.0),
-            child: Text('EMI Schedule'),
-          ),
-          Card(
-            child: Container(
-              height: 170,
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(),
-              child: Column (
-                children: <Widget> [
-                  Container(
-                    padding: const EdgeInsets.all(2.0),
-                    child: Table(
-                      border: TableBorder(
-                        top: BorderSide(width: 2, color: Theme.of(context).colorScheme.primary, style: BorderStyle.solid),
-                        horizontalInside: BorderSide(width: 1, color: Theme.of(context).colorScheme.primary, style: BorderStyle.solid),
-                        bottom: BorderSide(width: 2, color: Theme.of(context).colorScheme.primary, style: BorderStyle.solid),
-                      ),
-                      children: [
-                        TableRow (
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('Loan Amount', style: TextStyle(fontWeight: FontWeight.w500)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('EMI (3year)', style: TextStyle(fontWeight: FontWeight.w500)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('EMI (5year)', style: TextStyle(fontWeight: FontWeight.w500)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('EMI (7year)', style: TextStyle(fontWeight: FontWeight.w500)),
-                            ),
-                          ],
-                        ),
-                        TableRow (
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹2 Lakh', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹7,400', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹4,800', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹3,400', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                          ],
-                        ),
-                        TableRow (
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹3 lakh', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹10,400', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹5,600', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹4,200', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                          ],
-                        ),
-                        TableRow (
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹5 lakh', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹15,200', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹9,800', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(5.0),
-                              child: Text('₹7,200', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Container(
-            height: 40,
-            alignment: Alignment.topLeft,
-            padding: const EdgeInsets.all(10.0),
-            child: Text('Features & Benefits'),
-          ),
-          Container(
-            height: 160,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: <Widget>[
-                Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: ListView(
-                        scrollDirection: Axis.vertical,
-                        children: <Widget>[
-                          IconButton(icon: Icon(CustomIcons.rupee, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                          Text('FINANCE UP TO 100% ON VALUE', textAlign: TextAlign.center),
-                          SizedBox(height: 5),
-                          Text('Finance up to 100% on chassis value and 90% on fully build vehicles', textAlign: TextAlign.center, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w300)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: ListView(
-                        scrollDirection: Axis.vertical,
-                        children: <Widget>[
-                          IconButton(icon: Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                          Text('FINANCE UP TO 15 YEARS', textAlign: TextAlign.center),
-                          SizedBox(height: 5),
-                          Text('Finance up to 15 years for commercial vehicles', textAlign: TextAlign.center, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w300)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: ListView(
-                        scrollDirection: Axis.vertical,
-                        children: <Widget>[
-                          IconButton(icon: Icon(Icons.description, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                          Text('QUICK PROCESS', textAlign: TextAlign.center),
-                          SizedBox(height: 5),
-                          Text('Faster valuation and Speedy disbursement', textAlign: TextAlign.center, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w300)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: ListView(
-                        scrollDirection: Axis.vertical,
-                        children: <Widget>[
-                          IconButton(icon: Icon(Icons.payment, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                          Text('FLEXIBLE REPAYMENT', textAlign: TextAlign.center),
-                          SizedBox(height: 5),
-                          Text('Enabling borrowers to pay off EMI without any burden', textAlign: TextAlign.center, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w300)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-              height: 40
-          ),
-        ],
-      ),
+        );
+      }
     );
   }
 }
 
 class FinanceApplicationForm extends StatefulWidget {
-  FinanceApplicationForm({Key key, this.name, this.mobile}) : super(key: key);
+  FinanceApplicationForm({Key key, this.name, this.mobile, this.vehiclesegmentindex, this.vehiclesegment}) : super(key: key);
   final String name;
   final String mobile;
+  final int vehiclesegmentindex;
+  final String vehiclesegment;
   @override
   _FinanceApplicationFormState createState() => _FinanceApplicationFormState();
 }
@@ -775,207 +543,299 @@ class _FinanceApplicationFormState extends State<FinanceApplicationForm> {
   final _formKey = GlobalKey<FormState>();
   TextEditingController othersController = TextEditingController(text: '');
   TextEditingController amountController = TextEditingController(text: '');
-  TextEditingController remarksController = TextEditingController(text: '');
   String selectedCity = 'Bengaluru';
-  String selectedVehicleType = 'Select';
+  String selectedVehicleName = 'Select';
+  String selectedManufacturer = 'Select';
+  FocusNode myFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    myFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    myFocusNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     var config = AppConfig.of(context);
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: AppBar(
-        title: Text('Finance Application Form', style: TextStyle(fontSize: 14)),
-      ),
-      body: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedCity,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'City',
-                        ),
-                        onChanged: (String changedCity) {
-                          setState(() {
-                            selectedCity = changedCity;
-                          });
-                        },
-                        items: <String>['Bengaluru', 'Mysuru', 'Kolar']
-                            .map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    IconButton(icon: Icon(Icons.location_city, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedVehicleType,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Vehicle Model*',
-                        ),
-                        onChanged: (String changedVehicleType) {
-                          setState(() => selectedVehicleType = changedVehicleType);
-                        },
-                        items: <String>['Select','Tata Ace','Tata 407','Tata 912LPK','Mahindra Jeeto','Mahindra Jayo','Ashok Leyland Dost','Ashol Leyland Partner','Ashok Leyland 1920','Eicher Pro','Bharat Benz 1923','Others']
-                            .map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        validator: (value) {
-                          if (value.contains('Select')) {
-                            return 'Please select the vehicle model';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ),
-              selectedVehicleType.contains('Others') ? Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: TextFormField(
-                        controller: othersController,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Others*',
-                        ),
-                        validator: (value) {
-                          if (value.isEmpty) {
-                            return 'Please enter the vehicle model';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ) : SizedBox(),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: TextFormField(
-                        controller: amountController,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Loan Amount',
-                        ),
-                      ),
-                    ),
-                    IconButton(icon: Icon(CustomIcons.rupee, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: TextFormField(
-                        controller: remarksController,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Remarks',
-                        ),
-                      ),
-                    ),
-                    IconButton(icon: Icon(Icons.description, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: RaisedButton(
-                  onPressed: () async {
-                    if (_formKey.currentState.validate()) {
-                      showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return LoadingDialog();
-                          }
-                      );
-                      String message = ': [FINANCE REQUEST] ';
-                      message = message + 'Name: ' + widget.name + ', ';
-                      message = message + 'Phone #: ' + widget.mobile + ', ';
-                      message = message + 'City: ' + selectedCity + ', ';
-                      message = message + 'Vehicle: ' + (selectedVehicleType.contains('Others') ? othersController.text : selectedVehicleType) + ', ';
-                      message = message + 'Loan Amount: ' + (amountController.text.isEmpty ? 'none' : amountController.text) + ', ';
-                      message = message + 'Remarks: ' + (remarksController.text.isEmpty ? 'none' : remarksController.text);
-                      await MyApp().sendWhatsApp(config.twilioBaseUrl, config.twilioAccountSid, config.twilioApikeySid, config.twilioSecret, config.twilioWhatsappNumber, config.recipientNumber, message);
-                      Navigator.of(context).pop();
-                      showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return SubmitDialog(name: widget.name, mobile: widget.mobile, tab: 0);
-                          }
-                      );
-                    }
-                  },
-                  child: Text("Apply"),
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ],
+    return FutureBuilder<String>(
+      future: MyApp().getHttpData(config.financeUrl),
+      builder: (context, AsyncSnapshot<String> snapshot) {
+        Set<String> uniqueManufacturers = Set();
+        Set<String> uniqueVehicleNames = Set();
+        List<String> manufacturers = <String>['Select','Loading..'];
+        List<String> vehiclenames = <String>['Select'];
+        if (snapshot.hasData) {
+          Map<String, dynamic> jsonMap = jsonDecode(snapshot.data);
+          List<dynamic> vehicleSegmentsDetails = jsonMap['VEHICLE SEGMENTS'][widget.vehiclesegmentindex]['DETAILS'];
+          List.generate(vehicleSegmentsDetails.length, (index) {
+            uniqueManufacturers.add(vehicleSegmentsDetails[index]['MANUFACTURER']);
+            if (selectedManufacturer.contains(vehicleSegmentsDetails[index]['MANUFACTURER'])) {
+              uniqueVehicleNames.add(vehicleSegmentsDetails[index]['ASSET DESCRIPTION']);
+            }
+          });
+          manufacturers.removeAt(1);
+          manufacturers.addAll(uniqueManufacturers);
+          if (!selectedManufacturer.contains('Select')) {
+            uniqueVehicleNames.add('Others');
+          }
+          vehiclenames.addAll(uniqueVehicleNames);
+        }
+        return Scaffold(
+          key: _scaffoldKey,
+          appBar: AppBar(
+            title: Text('Finance Application Form', style: TextStyle(fontSize: 14)),
           ),
-        ),
-      ),
+          body: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: <Widget> [
+                        Flexible(
+                          child: TextFormField(
+                            initialValue: widget.vehiclesegment,
+                            readOnly: true,
+                            decoration: InputDecoration(
+                              enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                              ),
+                              labelText: 'Vehicle Segment',
+                            ),
+                          ),
+                        ),
+                        IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: <Widget> [
+                        Flexible(
+                          child: AbsorbPointer(
+                            absorbing: selectedVehicleName.contains('Select') ? false : true,
+                            child: DropdownButtonFormField<String>(
+                              value: selectedManufacturer,
+                              decoration: InputDecoration(
+                                enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                                ),
+                                labelText: 'Manufacturer Name*',
+                              ),
+                              onChanged: (String changedManufacturer) {
+                                setState(() {
+                                  if(!changedManufacturer.contains('Loading..')) {
+                                    selectedManufacturer = changedManufacturer;
+                                  }
+                                });
+                              },
+                              items: manufacturers
+                                  .map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                              validator: (value) {
+                                if (value.contains('Select')) {
+                                  return 'Please select the manufacturer name';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ),
+                        IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: <Widget> [
+                        Flexible(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedVehicleName,
+                            decoration: InputDecoration(
+                              enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                              ),
+                              labelText: 'Vehicle Name*',
+                            ),
+                            onChanged: (String changedVehicleName) {
+                              setState(() => selectedVehicleName = changedVehicleName);
+                            },
+                            items: vehiclenames
+                                .map<DropdownMenuItem<String>>((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: value.length > 38 ? Text(value, style: TextStyle(fontSize: 6)) : value.length > 32 ? Text(value, style: TextStyle(fontSize: 8)) : value.length > 26 ? Text(value, style: TextStyle(fontSize: 10)) : Text(value, style: TextStyle(fontSize: 12))
+                              );
+                            }).toList(),
+                            validator: (value) {
+                              if (value.contains('Select')) {
+                                return 'Please select the vehicle name';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                      ],
+                    ),
+                  ),
+                  selectedVehicleName.contains('Others') ? Container(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: <Widget> [
+                        Flexible(
+                          child: TextFormField(
+                            controller: othersController,
+                            decoration: InputDecoration(
+                              enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                              ),
+                              labelText: 'Others*',
+                            ),
+                            validator: (value) {
+                              if (value.isEmpty) {
+                                return 'Please enter the vehicle name';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                      ],
+                    ),
+                  ) : SizedBox(),
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: <Widget> [
+                        Flexible(
+                          child: TextFormField(
+                            controller: amountController,
+                            decoration: InputDecoration(
+                              enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                              ),
+                              labelText: 'Loan Amount*',
+                            ),
+                            validator: (value) {
+                              if (value.isEmpty) {
+                                return 'Please enter the loan amount';
+                              } else if (!value.contains(RegExp(r'^[0-9]+$'))) {
+                                return 'Please enter only the numbers';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        IconButton(icon: Icon(CustomIcons.rupee, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: <Widget> [
+                        Flexible(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedCity,
+                            decoration: InputDecoration(
+                              enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                              ),
+                              labelText: 'City',
+                            ),
+                            onChanged: (String changedCity) {
+                              setState(() {
+                                selectedCity = changedCity;
+                              });
+                            },
+                            items: <String>['Bengaluru', 'Mysuru', 'Kolar']
+                                .map<DropdownMenuItem<String>>((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        IconButton(icon: Icon(Icons.location_city, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    child: RaisedButton(
+                      onPressed: () async {
+                        if (_formKey.currentState.validate()) {
+                          showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return ShowEMIDialog(
+                                    name: widget.name,
+                                    mobile: widget.mobile,
+                                    tab: 0,
+                                    vehiclesegment: widget.vehiclesegment,
+                                    manufacturer: selectedManufacturer,
+                                    vehiclename: (selectedVehicleName.contains('Others') ? othersController.text : selectedVehicleName),
+                                    loanamount: int.parse(amountController.text),
+                                    city: selectedCity,
+                                );
+                              }
+                          );
+                        }
+                      },
+                      child: Text("Apply"),
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
     );
   }
 }
 
 class InsuranceTab extends StatefulWidget {
-  InsuranceTab({Key key, this.title}) : super(key: key);
-  final String title;
+  InsuranceTab({Key key, this.name, this.mobile}) : super(key: key);
+  final String name;
+  final String mobile;
   @override
   _InsuranceTabState createState() => _InsuranceTabState();
 }
 
 class _InsuranceTabState extends State<InsuranceTab> {
+  bool vehicleInsurancePressed = false;
+  bool vehicleSegmentsFetched = false;
+  List<dynamic> vehicleSegments;
   @override
   Widget build(BuildContext context) {
+    var config = AppConfig.of(context);
     return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Card(
+            shape: RoundedRectangleBorder(
+              borderRadius : BorderRadius.all(Radius.circular(5)),
+            ),
             child: Container(
               height: 70,
               padding: const EdgeInsets.all(12.0),
@@ -994,117 +854,45 @@ class _InsuranceTabState extends State<InsuranceTab> {
                   ),
                   Transform(
                     alignment: Alignment.center,
-                    transform: Matrix4.rotationY(math.pi),
+                    transform: Matrix4.rotationY(pi),
                     child: IconButton(icon: Icon(CustomIcons.truck_1, color: Theme.of(context).colorScheme.primary), onPressed: null),
                   ),
                 ],
               ),
             ),
           ),
+          vehicleSegmentsFetched ?
           Container(
             height: 40,
             alignment: Alignment.topLeft,
             padding: const EdgeInsets.all(10.0),
-            child: Text('Features & Benefits'),
-          ),
-          Container(
-            height: 150,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: <Widget>[
-                Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: ListView(
-                        scrollDirection: Axis.vertical,
-                        children: <Widget>[
-                          IconButton(iconSize: 30, icon: Icon(CustomIcons.earthquake, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                          Text('Coverage against flood, earthquake, landslide, etc.,', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Insurances',
+                    style: TextStyle(decoration: TextDecoration.underline, fontSize: 16, color: Colors.blue),
+                    recognizer: TapGestureRecognizer()..onTap = () {
+                      setState(() {
+                        vehicleSegmentsFetched = false;
+                      });
+                    }
                   ),
-                ),
-                Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: ListView(
-                        scrollDirection: Axis.vertical,
-                        children: <Widget>[
-                          IconButton(iconSize: 40, icon: Icon(CustomIcons.accident, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                          Text('Coverage against accidental external damage, theft, etc.,', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
+                  TextSpan(
+                    text: ' > Vehicle Insurance > Segments',
+                    style: TextStyle(fontSize: 16, color: Colors.black),
                   ),
-                ),
-                Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: ListView(
-                        scrollDirection: Axis.vertical,
-                        children: <Widget>[
-                          IconButton(icon: Icon(Icons.description, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                          Text('Zero depreciation cover', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: ListView(
-                        scrollDirection: Axis.vertical,
-                        children: <Widget>[
-                          IconButton(icon: Icon(CustomIcons.by_24_7, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                          Text('24X7 on road side assistance coverage', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+                ]
+              )
+            )
+          ) :
           Container(
             height: 40,
             alignment: Alignment.topLeft,
             padding: const EdgeInsets.all(10.0),
-            child: Text('Other Insurances'),
+            child: Text('Insurances Types'),
           ),
+          vehicleSegmentsFetched ? SizedBox() :
           Container(
             height: 110,
             child: ListView(
@@ -1112,23 +900,37 @@ class _InsuranceTabState extends State<InsuranceTab> {
               children: <Widget>[
                 Card(
                   child: Container(
-                    width: 150,
+                    width: 112,
                     padding: const EdgeInsets.all(12.0),
                     decoration: BoxDecoration(
                       border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
+                        top: BorderSide(width: 3, color: Theme.of(context).colorScheme.primary),
                       ),
                     ),
                     child: Container(
                         alignment: Alignment.center,
                         child: ListView(
                           children: <Widget>[
+                            Text('Vehicle Insurance', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
                             Transform(
                               alignment: Alignment.center,
-                              transform: Matrix4.rotationY(math.pi),
-                              child: IconButton(iconSize: 30, icon: Icon(CustomIcons.lifeinsurance, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                            ),
-                            Text('Life Insurance', textAlign: TextAlign.center, style: TextStyle(fontSize: 12))
+                              transform: Matrix4.rotationY(pi),
+                              child: IconButton(
+                                  iconSize: 30,
+                                  icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary),
+                                  onPressed: () async {
+                                    setState(() {
+                                      vehicleInsurancePressed = true;
+                                    });
+                                    String data = await MyApp().getHttpData(config.financeUrl);
+                                    Map<String, dynamic> jsonMap = jsonDecode(data);
+                                    setState(() {
+                                      vehicleSegments = jsonMap['VEHICLE SEGMENTS'];
+                                      vehicleSegmentsFetched = true;
+                                      vehicleInsurancePressed = false;
+                                    });
+                                  }),
+                            )
                           ],
                         )
                     ),
@@ -1136,19 +938,60 @@ class _InsuranceTabState extends State<InsuranceTab> {
                 ),
                 Card(
                   child: Container(
-                    width: 150,
+                    width: 112,
                     padding: const EdgeInsets.all(12.0),
                     decoration: BoxDecoration(
                       border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
+                        top: BorderSide(width: 3, color: Theme.of(context).colorScheme.primary),
                       ),
                     ),
                     child: Container(
                         alignment: Alignment.center,
                         child: ListView(
                           children: <Widget>[
-                            IconButton(icon: Icon(CustomIcons.medicalinsurance, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                            Text('Health Insurance', textAlign: TextAlign.center, style: TextStyle(fontSize: 12))
+                            Text('Life Insurance', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
+                            IconButton(
+                                iconSize: 30,
+                                icon: Icon(CustomIcons.lifeinsurance, color: Theme.of(context).colorScheme.primary),
+                                onPressed: () {
+                                  Navigator.push(context, MaterialPageRoute(
+                                      builder: (_) => InsuranceApplicationForm(
+                                          name: widget.name,
+                                          mobile: widget.mobile,
+                                          insurancetype: 'Life'
+                                      )
+                                  ));
+                                }),
+                          ],
+                        )
+                    ),
+                  ),
+                ),
+                Card(
+                  child: Container(
+                    width: 112,
+                    padding: const EdgeInsets.all(12.0),
+                    decoration: BoxDecoration(
+                      border: Border (
+                        top: BorderSide(width: 3, color: Theme.of(context).colorScheme.primary),
+                      ),
+                    ),
+                    child: Container(
+                        alignment: Alignment.center,
+                        child: ListView(
+                          children: <Widget>[
+                            Text('Health Insurance', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
+                            IconButton(
+                                icon: Icon(CustomIcons.medicalinsurance, color: Theme.of(context).colorScheme.primary),
+                                onPressed: () {
+                                  Navigator.push(context, MaterialPageRoute(
+                                      builder: (_) => InsuranceApplicationForm(
+                                          name: widget.name,
+                                          mobile: widget.mobile,
+                                          insurancetype: 'Health'
+                                      )
+                                  ));
+                                }),
                           ],
                         )
                     ),
@@ -1157,9 +1000,55 @@ class _InsuranceTabState extends State<InsuranceTab> {
               ],
             ),
           ),
+          vehicleSegmentsFetched ?
           SizedBox(
-              height: 40
-          ),
+            child: Container(
+                height: 360,
+                child: GridView.count(
+                    crossAxisCount: 3,
+                    scrollDirection: Axis.vertical,
+                    children: List.generate(vehicleSegments.length,(index) {
+                      return Container(
+                        child: Card(
+                          elevation: 3.0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius : BorderRadius.all(Radius.circular(5)),
+                              side: BorderSide(width: 1, color: Theme.of(context).colorScheme.primary)
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              children: [
+                                Text(vehicleSegments[index]['NAME'], textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
+                                ((vehicleSegments[index]['NAME']).toString().length > 13)? SizedBox() : SizedBox(height: 12),
+                                IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: () {
+                                  Navigator.push(context, MaterialPageRoute(
+                                      builder: (_) => InsuranceApplicationForm(
+                                          name: widget.name,
+                                          mobile: widget.mobile,
+                                          insurancetype: 'vehicle',
+                                          vehiclesegmentindex: index,
+                                          vehiclesegment: vehicleSegments[index]['NAME']
+                                      )
+                                  ));
+                                }),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    })
+                ),
+            )
+          ) : vehicleInsurancePressed ?
+          SizedBox(
+              height: 40,
+              child: Center(
+                  child: Container(
+                      child: Text('Loading..')
+                  )
+              )
+          ) : SizedBox()
         ],
       ),
     );
@@ -1167,9 +1056,12 @@ class _InsuranceTabState extends State<InsuranceTab> {
 }
 
 class InsuranceApplicationForm extends StatefulWidget {
-  InsuranceApplicationForm({Key key, this.name, this.mobile}) : super(key: key);
+  InsuranceApplicationForm({Key key, this.name, this.mobile, this.insurancetype, this.vehiclesegmentindex, this.vehiclesegment}) : super(key: key);
   final String name;
   final String mobile;
+  final String insurancetype;
+  final int vehiclesegmentindex;
+  final String vehiclesegment;
   @override
   _InsuranceApplicationFormState createState() => _InsuranceApplicationFormState();
 }
@@ -1177,176 +1069,344 @@ class InsuranceApplicationForm extends StatefulWidget {
 class _InsuranceApplicationFormState extends State<InsuranceApplicationForm> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
-  TextEditingController vehicleController = TextEditingController(text: '');
-  TextEditingController remarksController = TextEditingController(text: '');
+  TextEditingController othersController = TextEditingController(text: '');
+  TextEditingController preInsurerController = TextEditingController(text: '');
   String selectedCity = 'Bengaluru';
-  String selectedInsuranceType = 'Select';
+  String selectedVehicleName = 'Select';
+  String selectedManufacturer = 'Select';
+  String selectedVehicleModel = 'Select';
+  FocusNode myFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    myFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    myFocusNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     var config = AppConfig.of(context);
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: AppBar(
-        title: Text('Insurance Application Form', style: TextStyle(fontSize: 14)),
-      ),
-      body: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedCity,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+    return FutureBuilder<String>(
+        future: MyApp().getHttpData(config.financeUrl),
+        builder: (context, AsyncSnapshot<String> snapshot) {
+          Set<String> uniqueManufacturers = Set();
+          Set<String> uniqueVehicleNames = Set();
+          List<String> manufacturers = <String>['Select','Loading..'];
+          List<String> vehiclenames = <String>['Select'];
+          List<String> vehiclemodels = <String>['Select','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020'];
+          if (snapshot.hasData && widget.insurancetype.contains('vehicle')) {
+            Map<String, dynamic> jsonMap = jsonDecode(snapshot.data);
+            List<dynamic> vehicleSegmentsDetails = jsonMap['VEHICLE SEGMENTS'][widget.vehiclesegmentindex]['DETAILS'];
+            List.generate(vehicleSegmentsDetails.length, (index) {
+              uniqueManufacturers.add(vehicleSegmentsDetails[index]['MANUFACTURER']);
+              if (selectedManufacturer.contains(vehicleSegmentsDetails[index]['MANUFACTURER'])) {
+                uniqueVehicleNames.add(vehicleSegmentsDetails[index]['ASSET DESCRIPTION']);
+              }
+            });
+            manufacturers.removeAt(1);
+            manufacturers.addAll(uniqueManufacturers);
+            if (!selectedManufacturer.contains('Select')) {
+              uniqueVehicleNames.add('Others');
+            }
+            vehiclenames.addAll(uniqueVehicleNames);
+          }
+          return Scaffold(
+            key: _scaffoldKey,
+            appBar: AppBar(
+              title: Text('Insurance Application Form', style: TextStyle(fontSize: 14)),
+            ),
+            body: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    widget.insurancetype.contains('vehicle') ?
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: <Widget> [
+                          Flexible(
+                            child: TextFormField(
+                              initialValue: widget.vehiclesegment,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                                ),
+                                labelText: 'Vehicle Insurance > Vehicle Segment',
+                              ),
+                            ),
                           ),
-                          labelText: 'City',
-                        ),
-                        onChanged: (String changedCity) {
-                          setState(() {
-                            selectedCity = changedCity;
-                          });
-                        },
-                        items: <String>['Bengaluru', 'Mysuru', 'Kolar']
-                            .map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
+                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        ],
+                      ),
+                    ) :
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: <Widget> [
+                          Flexible(
+                            child: TextFormField(
+                              initialValue: widget.insurancetype,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                                ),
+                                labelText: 'Insurance',
+                              ),
+                            ),
+                          ),
+                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        ],
                       ),
                     ),
-                    IconButton(icon: Icon(Icons.location_city, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                    widget.insurancetype.contains('vehicle') ?
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: <Widget> [
+                          Flexible(
+                            child: AbsorbPointer(
+                              absorbing: selectedVehicleName.contains('Select') ? false : true,
+                              child: DropdownButtonFormField<String>(
+                                value: selectedManufacturer,
+                                decoration: InputDecoration(
+                                  enabledBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                                  ),
+                                  labelText: 'Manufacturer Name*',
+                                ),
+                                onChanged: (String changedManufacturer) {
+                                  setState(() {
+                                    if(!changedManufacturer.contains('Loading..')) {
+                                      selectedManufacturer = changedManufacturer;
+                                    }
+                                  });
+                                },
+                                items: manufacturers
+                                    .map<DropdownMenuItem<String>>((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(value),
+                                  );
+                                }).toList(),
+                                validator: (value) {
+                                  if (value.contains('Select')) {
+                                    return 'Please select the manufacturer name';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ),
+                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        ],
+                      ),
+                    ) : SizedBox(),
+                    widget.insurancetype.contains('vehicle') ?
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: <Widget> [
+                          Flexible(
+                            child: DropdownButtonFormField<String>(
+                              value: selectedVehicleName,
+                              decoration: InputDecoration(
+                                enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                                ),
+                                labelText: 'Vehicle Name*',
+                              ),
+                              onChanged: (String changedVehicleName) {
+                                setState(() => selectedVehicleName = changedVehicleName);
+                              },
+                              items: vehiclenames
+                                  .map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: value.length > 38 ? Text(value, style: TextStyle(fontSize: 6)) : value.length > 32 ? Text(value, style: TextStyle(fontSize: 8)) : value.length > 26 ? Text(value, style: TextStyle(fontSize: 10)) : Text(value, style: TextStyle(fontSize: 12))
+                                );
+                              }).toList(),
+                              validator: (value) {
+                                if (value.contains('Select')) {
+                                  return 'Please select the vehicle name';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        ],
+                      ),
+                    ) : SizedBox(),
+                    widget.insurancetype.contains('vehicle') ?
+                    selectedVehicleName.contains('Others') ? Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: <Widget> [
+                          Flexible(
+                            child: TextFormField(
+                              controller: othersController,
+                              decoration: InputDecoration(
+                                enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                                ),
+                                labelText: 'Others*',
+                              ),
+                              validator: (value) {
+                                if (value.isEmpty) {
+                                  return 'Please enter the vehicle name';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        ],
+                      ),
+                    ) : SizedBox() : SizedBox(),
+                    widget.insurancetype.contains('vehicle') ?
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: <Widget> [
+                          Flexible(
+                            child: DropdownButtonFormField<String>(
+                              value: selectedVehicleModel,
+                              decoration: InputDecoration(
+                                enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                                ),
+                                labelText: 'Vehicle Model*',
+                              ),
+                              onChanged: (String changedVehicleModel) {
+                                setState(() => selectedVehicleModel = changedVehicleModel);
+                              },
+                              items: vehiclemodels
+                                  .map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(value)
+                                );
+                              }).toList(),
+                              validator: (value) {
+                                if (value.contains('Select')) {
+                                  return 'Please select the vehicle model';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        ],
+                      ),
+                    ) : SizedBox(),
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: <Widget> [
+                          Flexible(
+                            child: TextFormField(
+                              controller: preInsurerController,
+                              decoration: InputDecoration(
+                                enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                                ),
+                                labelText: 'Previous Insurer Details (if any)',
+                              ),
+                            ),
+                          ),
+                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: <Widget> [
+                          Flexible(
+                            child: DropdownButtonFormField<String>(
+                              value: selectedCity,
+                              decoration: InputDecoration(
+                                enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                                ),
+                                labelText: 'City',
+                              ),
+                              onChanged: (String changedCity) {
+                                setState(() {
+                                  selectedCity = changedCity;
+                                });
+                              },
+                              items: <String>['Bengaluru', 'Mysuru', 'Kolar']
+                                  .map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          IconButton(icon: Icon(Icons.location_city, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: RaisedButton(
+                        onPressed: () async {
+                          if (_formKey.currentState.validate()) {
+                            showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return widget.insurancetype.contains('vehicle') ? ShowPremiumDialog(
+                                    name: widget.name,
+                                    mobile: widget.mobile,
+                                    tab: 0,
+                                    insurancetype: widget.insurancetype,
+                                    vehiclesegment: widget.vehiclesegment,
+                                    manufacturer: selectedManufacturer,
+                                    vehiclename: (selectedVehicleName.contains('Others') ? othersController.text : selectedVehicleName),
+                                    vehiclemodel: int.parse(selectedVehicleModel),
+                                    previousinsurer: preInsurerController.text.isNotEmpty ? preInsurerController.text : '',
+                                    city: selectedCity,
+                                  ) : ShowPremiumDialog(
+                                    name: widget.name,
+                                    mobile: widget.mobile,
+                                    tab: 0,
+                                    insurancetype: widget.insurancetype,
+                                    previousinsurer: preInsurerController.text.isNotEmpty ? preInsurerController.text : '',
+                                    city: selectedCity,
+                                  );
+                                }
+                            );
+                          }
+                        },
+                        child: Text("Apply"),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedInsuranceType,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Insurance Type*',
-                        ),
-                        onChanged: (String changedInsuranceType) {
-                          setState(() => selectedInsuranceType = changedInsuranceType);
-                        },
-                        items: <String>['Select','Vehicle Insurance','Life Insurance','Health Insurance']
-                            .map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        validator: (value) {
-                          if (value.contains('Select')) {
-                            return 'Please select the Insurance Type';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    IconButton(icon: Icon(CustomIcons.insurance, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ),
-              selectedInsuranceType.contains('Vehicle Insurance') ? Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: TextFormField(
-                        controller: vehicleController,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Vehicle Registration Number*',
-                        ),
-                        validator: (value) {
-                          if (value.isEmpty) {
-                            return 'Please enter the vehicle registration number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ) : SizedBox(),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: TextFormField(
-                        controller: remarksController,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Remarks',
-                        ),
-                      ),
-                    ),
-                    IconButton(icon: Icon(Icons.description, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: RaisedButton(
-                  onPressed: () async {
-                    if (_formKey.currentState.validate()) {
-                      showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return LoadingDialog();
-                          }
-                      );
-                      String message = ': [INSURANCE REQUEST] ';
-                      message = message + 'Name: ' + widget.name + ', ';
-                      message = message + 'Phone #: ' + widget.mobile + ', ';
-                      message = message + 'City: ' + selectedCity + ', ';
-                      message = message + 'Insurance Type: ' + selectedInsuranceType + ', ';
-                      message = message + (selectedInsuranceType.contains('Vehicle Insurance') ? 'Vehicle Registration Number: ' + vehicleController.text + ', ': '');
-                      message = message + 'Remarks: ' + (remarksController.text.isEmpty ? 'none' : remarksController.text);
-                      await MyApp().sendWhatsApp(config.twilioBaseUrl, config.twilioAccountSid, config.twilioApikeySid, config.twilioSecret, config.twilioWhatsappNumber, config.recipientNumber, message);
-                      Navigator.of(context).pop();
-                      showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return SubmitDialog(name: widget.name, mobile: widget.mobile, tab: 1);
-                          }
-                      );
-                    }
-                  },
-                  child: Text("Apply"),
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
+          );
+        }
     );
   }
 }
 
 class DepositTab extends StatefulWidget {
-  DepositTab({Key key, this.mobile}) : super(key: key);
+  DepositTab({Key key, this.name, this.mobile}) : super(key: key);
+  final String name;
   final String mobile;
   @override
   _DepositTabState createState() => _DepositTabState();
@@ -1378,7 +1438,7 @@ class _DepositTabState extends State<DepositTab> {
                   ),
                   Transform(
                     alignment: Alignment.center,
-                    transform: Matrix4.rotationY(math.pi),
+                    transform: Matrix4.rotationY(pi),
                     child: IconButton(icon: Icon(CustomIcons.truck_1, color: Theme.of(context).colorScheme.primary), onPressed: null),
                   ),
                 ],
@@ -1397,55 +1457,68 @@ class _DepositTabState extends State<DepositTab> {
               scrollDirection: Axis.horizontal,
               children: <Widget>[
                 Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
                     child: Container(
-                        alignment: Alignment.center,
-                        child: ListView(
-                          children: <Widget>[
-                            Transform(
-                              alignment: Alignment.center,
-                              transform: Matrix4.rotationY(math.pi),
-                              child: IconButton(iconSize: 30, icon: Icon(CustomIcons.debenture, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                            ),
-                            Text('Debenture', textAlign: TextAlign.center, style: TextStyle(fontSize: 12))
-                          ],
+                        width: 112,
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          border: Border (
+                            top: BorderSide(width: 3, color: Theme.of(context).colorScheme.primary),
+                          ),
+                        ),
+                        child: Container(
+                            child: Column(
+                                children: <Widget>[
+                                  Text('Debenture', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
+                                  IconButton(
+                                      iconSize: 30,
+                                      icon: Icon(CustomIcons.debenture, color: Theme.of(context).colorScheme.primary),
+                                      onPressed: () {
+                                        Navigator.push(context, MaterialPageRoute(
+                                            builder: (_) => DepositApplicationForm(
+                                                name: widget.name,
+                                                mobile: widget.mobile,
+                                                deposittype: 'Debenture'
+                                            )
+                                        ));
+                                      }),
+                                ]
+                            )
                         )
-                    ),
-                  ),
+                    )
                 ),
                 Card(
-                  child: Container(
-                    width: 150,
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      border: Border (
-                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
                     child: Container(
-                        alignment: Alignment.center,
-                        child: ListView(
-                          children: <Widget>[
-                            IconButton(iconSize: 35, icon: Icon(CustomIcons.deposit, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                            Text('Deposit', textAlign: TextAlign.center, style: TextStyle(fontSize: 12))
-                          ],
+                        width: 112,
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          border: Border (
+                            top: BorderSide(width: 3, color: Theme.of(context).colorScheme.primary),
+                          ),
+                        ),
+                        child: Container(
+                            child: Column(
+                                children: <Widget>[
+                                  Text('Deposit', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
+                                  IconButton(
+                                      iconSize: 35,
+                                      icon: Icon(CustomIcons.deposit, color: Theme.of(context).colorScheme.primary),
+                                      onPressed: () {
+                                        Navigator.push(context, MaterialPageRoute(
+                                            builder: (_) => DepositApplicationForm(
+                                                name: widget.name,
+                                                mobile: widget.mobile,
+                                                deposittype: 'Deposit'
+                                            )
+                                        ));
+                                      }),
+                                ]
+                            )
                         )
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-              height: 40
-          ),
+                    )
+                )
+              ]
+            )
+          )
         ],
       ),
     );
@@ -1453,9 +1526,10 @@ class _DepositTabState extends State<DepositTab> {
 }
 
 class DepositApplicationForm extends StatefulWidget {
-  DepositApplicationForm({Key key, this.name, this.mobile}) : super(key: key);
+  DepositApplicationForm({Key key, this.name, this.mobile, this.deposittype}) : super(key: key);
   final String name;
   final String mobile;
+  final String deposittype;
   @override
   _DepositApplicationFormState createState() => _DepositApplicationFormState();
 }
@@ -1464,9 +1538,7 @@ class _DepositApplicationFormState extends State<DepositApplicationForm> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
   TextEditingController amountController = TextEditingController(text: '');
-  TextEditingController remarksController = TextEditingController(text: '');
   String selectedCity = 'Bengaluru';
-  String selectedProductType = 'Select';
   @override
   Widget build(BuildContext context) {
     var config = AppConfig.of(context);
@@ -1481,6 +1553,53 @@ class _DepositApplicationFormState extends State<DepositApplicationForm> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: <Widget> [
+                    Flexible(
+                      child: TextFormField(
+                        initialValue: widget.deposittype,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                          ),
+                          labelText: 'Deposit',
+                        ),
+                      ),
+                    ),
+                    IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: <Widget> [
+                    Flexible(
+                      child: TextFormField(
+                        controller: amountController,
+                        decoration: InputDecoration(
+                          enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
+                          ),
+                          labelText: 'Deposit Amount*',
+                        ),
+                        validator: (value) {
+                          if (value.isEmpty) {
+                            return 'Please enter the deposit amount';
+                          } else if (!value.contains(RegExp(r'^[0-9]+$'))) {
+                            return 'Please enter only the numbers';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    IconButton(icon: Icon(CustomIcons.rupee, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                  ],
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
@@ -1514,95 +1633,21 @@ class _DepositApplicationFormState extends State<DepositApplicationForm> {
               ),
               Container(
                 padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedProductType,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Product*',
-                        ),
-                        onChanged: (String changedProductType) {
-                          setState(() => selectedProductType = changedProductType);
-                        },
-                        items: <String>['Select','Debenture','Deposit']
-                            .map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        validator: (value) {
-                          if (value.contains('Select')) {
-                            return 'Please select the product';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    IconButton(icon: Icon(CustomIcons.deposit, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: TextFormField(
-                        controller: amountController,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Investment Amount',
-                        ),
-                      ),
-                    ),
-                    IconButton(icon: Icon(CustomIcons.rupee, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: <Widget> [
-                    Flexible(
-                      child: TextFormField(
-                        controller: remarksController,
-                        decoration: InputDecoration(
-                          enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)
-                          ),
-                          labelText: 'Remarks',
-                        ),
-                      ),
-                    ),
-                    IconButton(icon: Icon(Icons.description, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8.0),
                 child: RaisedButton(
                   onPressed: () async {
                     if (_formKey.currentState.validate()) {
                       showDialog(
                           context: context,
                           builder: (BuildContext context) {
-                            return LoadingDialog();
+                            return SubmittingDialog();
                           }
                       );
                       String message = ': [DEPOSIT REQUEST] ';
                       message = message + 'Name: ' + widget.name + ', ';
                       message = message + 'Phone #: ' + widget.mobile + ', ';
                       message = message + 'City: ' + selectedCity + ', ';
-                      message = message + 'Product: ' + selectedProductType + ', ';
-                      message = message + 'Investment Amount: ' + (amountController.text.isEmpty ? 'none' : amountController.text) + ', ';
-                      message = message + 'Remarks: ' + (remarksController.text.isEmpty ? 'none' : remarksController.text);
+                      message = message + 'Product: ' + widget.deposittype + ', ';
+                      message = message + 'Investment Amount: ' + (amountController.text.isEmpty ? 'none' : amountController.text);
                       await MyApp().sendWhatsApp(config.twilioBaseUrl, config.twilioAccountSid, config.twilioApikeySid, config.twilioSecret, config.twilioWhatsappNumber, config.recipientNumber, message);
                       Navigator.of(context).pop();
                       showDialog(
@@ -1625,13 +1670,228 @@ class _DepositApplicationFormState extends State<DepositApplicationForm> {
   }
 }
 
-class LoadingDialog extends StatelessWidget {
+class ShowEMIDialog extends StatelessWidget {
+  ShowEMIDialog({Key key, this.name, this.mobile, this.tab, this.vehiclesegment, this.manufacturer, this.vehiclename, this.loanamount, this.city}) : super(key: key);
+  final String name;
+  final String mobile;
+  final int tab;
+  final String vehiclesegment;
+  final String manufacturer;
+  final String vehiclename;
+  final int loanamount;
+  final String city;
+  @override
+  Widget build(BuildContext context) {
+    var config = AppConfig.of(context);
+    return FutureBuilder<String>(
+      future: MyApp().getHttpData(config.financeUrl),
+      builder: (context, AsyncSnapshot<String> snapshot) {
+        if (snapshot.hasData) {
+          Map<String, dynamic> jsonMap = jsonDecode(snapshot.data);
+          var interestRate = (int.parse(cast<String>(jsonMap['SETTINGS']['finance_interest_rate'])))/100;
+          var totalAmount = loanamount + (loanamount * interestRate);
+          var twoYearEMI = roundDouble(totalAmount/24, 2);
+          var threeYearEMI = roundDouble(totalAmount/36, 2);
+          var fourYearEMI = roundDouble(totalAmount/48, 2);
+          return Dialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20.0)
+            ),
+            child: Container(
+              height: 200,
+              padding: const EdgeInsets.all(12.0),
+              child: Center(
+                child: Column(
+                  children: [
+                    SizedBox(
+                        height: 30
+                    ),
+                    Text('EMI ₹$twoYearEMI for 2 years'),
+                    Text('EMI ₹$threeYearEMI for 3 years'),
+                    Text('EMI ₹$fourYearEMI for 4 years'),
+                    SizedBox(
+                        height: 20
+                    ),
+                    RaisedButton(
+                        onPressed: () async {
+                          showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return SubmittingDialog();
+                              }
+                          );
+                          String message = ': [FINANCE REQUEST] ';
+                          message = message + 'Name: ' + name + ', ';
+                          message = message + 'Phone #: ' + mobile + ', ';
+                          message = message + 'City: ' + city + ', ';
+                          message = message + 'Vehicle Segment: ' + vehiclesegment + ', ';
+                          message = message + 'Manufacturer Name: ' + manufacturer + ', ';
+                          message = message + 'Vehicle Name: ' + vehiclename + ', ';
+                          message = message + 'Loan Amount: ' + loanamount.toString();
+                          await MyApp().sendWhatsApp(config.twilioBaseUrl, config.twilioAccountSid, config.twilioApikeySid, config.twilioSecret, config.twilioWhatsappNumber, config.recipientNumber, message);
+                          Navigator.of(context).pop();
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return SubmitDialog(name: name, mobile: mobile, tab: 0);
+                            }
+                          );
+                        },
+                        child: Text('Ok'),
+                        color: Theme.of(context).colorScheme.primary
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        } else {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20.0)
+            ),
+            child: Container(
+              height: 200,
+              padding: const EdgeInsets.all(12.0),
+              child: Center(
+                child: Column(
+                  children: [
+                    SizedBox(
+                        height: 70
+                    ),
+                    Text('Calculating EMI..'),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+      }
+    );
+  }
+}
+
+class ShowPremiumDialog extends StatelessWidget {
+  ShowPremiumDialog({Key key, this.name, this.mobile, this.tab, this.insurancetype, this.vehiclesegment, this.manufacturer, this.vehiclename, this.vehiclemodel, this.previousinsurer, this.city}) : super(key: key);
+  final String name;
+  final String mobile;
+  final int tab;
+  final String insurancetype;
+  final String vehiclesegment;
+  final String manufacturer;
+  final String vehiclename;
+  final int vehiclemodel;
+  final String previousinsurer;
+  final String city;
+  @override
+  Widget build(BuildContext context) {
+    var config = AppConfig.of(context);
+    return FutureBuilder<String>(
+        future: MyApp().getHttpData(config.financeUrl),
+        builder: (context, AsyncSnapshot<String> snapshot) {
+          var premiumamount = '0';
+          if (snapshot.hasData) {
+            Map<String, dynamic> jsonMap = jsonDecode(snapshot.data);
+            List<dynamic> premiumrates = jsonMap['SETTINGS']['premium_rates'];
+            if(insurancetype.contains('vehicle')) {
+              premiumrates.forEach((premiumrate) {
+                if ((premiumrate as Map<String, dynamic>).containsKey('$vehiclemodel')) {
+                  premiumamount = premiumrate['$vehiclemodel'];
+                }
+              });
+            } else {
+              premiumamount = '4500';
+            }
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20.0)
+              ),
+              child: Container(
+                height: 200,
+                padding: const EdgeInsets.all(12.0),
+                child: Center(
+                  child: Column(
+                    children: [
+                      SizedBox(
+                          height: 30
+                      ),
+                      Text('Premium amount will be ₹$premiumamount'),
+                      SizedBox(
+                          height: 20
+                      ),
+                      RaisedButton(
+                          onPressed: () async {
+                            showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return SubmittingDialog();
+                                }
+                            );
+                            String message = ': [INSURANCE REQUEST] ';
+                            message = message + 'Name: ' + name + ', ';
+                            message = message + 'Phone #: ' + mobile + ', ';
+                            message = message + 'City: ' + city + ', ';
+                            message = message + 'Insurance Type: ' + insurancetype + ', ';
+                            if(insurancetype.contains('vehicle')) {
+                              message = message + 'Vehicle Segment: ' + vehiclesegment + ', ';
+                              message = message + 'Manufacturer Name: ' + manufacturer + ', ';
+                              message = message + 'Vehicle Name: ' + vehiclename + ', ';
+                              message = message + 'Vehicle Model: ' + vehiclemodel.toString() + ', ';
+                            }
+                            if(previousinsurer.isNotEmpty) {
+                              message = message + 'Previous Insurer: ' + previousinsurer + ', ';
+                            }
+                            message = message + 'Premium Amount: ' + premiumamount;
+                            await MyApp().sendWhatsApp(config.twilioBaseUrl, config.twilioAccountSid, config.twilioApikeySid, config.twilioSecret, config.twilioWhatsappNumber, config.recipientNumber, message);
+                            Navigator.of(context).pop();
+                            showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return SubmitDialog(name: name, mobile: mobile, tab: 1);
+                                }
+                            );
+                          },
+                          child: Text('Ok'),
+                          color: Theme.of(context).colorScheme.primary
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          } else {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20.0)
+              ),
+              child: Container(
+                height: 200,
+                padding: const EdgeInsets.all(12.0),
+                child: Center(
+                  child: Column(
+                    children: [
+                      SizedBox(
+                          height: 70
+                      ),
+                      Text('Calculating Premium..'),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        }
+    );
+  }
+}
+
+class SubmittingDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.0)
-      ), //this right here
+      ),
       child: Container(
         height: 200,
         padding: const EdgeInsets.all(12.0),
@@ -1716,4 +1976,11 @@ class ComingSoonPage extends StatelessWidget {
         )
     );
   }
+}
+
+T cast<T>(x) => x is T ? x : null;
+
+double roundDouble(double value, int places){
+  double mod = pow(10.0, places);
+  return ((value * mod).round().toDouble() / mod);
 }
