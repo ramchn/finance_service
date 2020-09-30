@@ -375,7 +375,7 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                     title: Text('Apply Status'),
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => ComingSoonPage()
+                        builder: (_) => ComingSoonPage()
                       ));
                     },
                   ),
@@ -385,7 +385,7 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                     title: Text('Features'),
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => ComingSoonPage()
+                        builder: (_) => ComingSoonPage()
                       ));
                     },
                   ),
