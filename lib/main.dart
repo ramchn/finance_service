@@ -352,7 +352,7 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
               ]
           ),
           drawer: SizedBox(
-            width: 200,
+            width: 230,
             child: Drawer(
               child: Column(
                 children: [
@@ -381,8 +381,18 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                   ),
                   Divider(color: Theme.of(context).colorScheme.primary),
                   ListTile(
+                    leading: Icon(Icons.payment, color: Theme.of(context).colorScheme.primary),
+                    title: Text('Payments'),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => ComingSoonPage()
+                      ));
+                    },
+                  ),
+                  Divider(color: Theme.of(context).colorScheme.primary),
+                  ListTile(
                     leading: Icon(CustomIcons.features, color: Theme.of(context).colorScheme.primary),
-                    title: Text('Features'),
+                    title: Text('Features & Benefits'),
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(
                         builder: (_) => ComingSoonPage()
@@ -391,8 +401,8 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                   ),
                   Divider(color: Theme.of(context).colorScheme.primary),
                   ListTile(
-                    leading: Icon(Icons.payment, color: Theme.of(context).colorScheme.primary),
-                    title: Text('Payments'),
+                    leading: Icon(Icons.description, color: Theme.of(context).colorScheme.primary),
+                    title: Text('Terms & Conditions'),
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(
                           builder: (_) => ComingSoonPage()
@@ -445,60 +455,39 @@ class _FinanceTabState extends State<FinanceTab> {
           List<dynamic> vehicleSegments = jsonMap['VEHICLE SEGMENTS'];
           segments = Container(
             height: 360,
+            width: 360,
             child: GridView.count(
                 crossAxisCount: 3,
                 scrollDirection: Axis.vertical,
                 children: List.generate(vehicleSegments.length,(index) {
-                  Icon segmentIcon;
-                  if(vehicleSegments[index]['NAME'].toString().contains('CONSTRUCTION VEHICLE')) {
-                    segmentIcon = Icon(CustomIcons.constructionvehicle, size: 50, color: Theme.of(context).colorScheme.primary);
-                  } else if(vehicleSegments[index]['NAME'].toString().contains('FARM EQUIPMENT')) {
-                    segmentIcon = Icon(CustomIcons.farmequipment, size: 30, color: Theme.of(context).colorScheme.primary);
-                  } else if(vehicleSegments[index]['NAME'].toString().contains('LCV')) {
-                    segmentIcon = Icon(CustomIcons.lcv, size: 50, color: Theme.of(context).colorScheme.primary);
-                  } else if(vehicleSegments[index]['NAME'].toString().contains('MACHINERY')) {
-                    segmentIcon = Icon(CustomIcons.machinery, size: 50, color: Theme.of(context).colorScheme.primary);
-                  } else if(vehicleSegments[index]['NAME'].toString().contains('MHCV')) {
-                    segmentIcon = Icon(CustomIcons.mhcv, size: 40, color: Theme.of(context).colorScheme.primary);
-                  } else if(vehicleSegments[index]['NAME'].toString().contains('PASSENGER 3WHEELER')) {
-                    segmentIcon = Icon(CustomIcons.threewheeler, size: 30, color: Theme.of(context).colorScheme.primary);
-                  } else if(vehicleSegments[index]['NAME'].toString().contains('PASSENGER COMMERCIAL')) {
-                    segmentIcon = Icon(CustomIcons.passengercommercial, size: 40, color: Theme.of(context).colorScheme.primary);
-                  } else if(vehicleSegments[index]['NAME'].toString().contains('PRIVATE CAR')) {
-                    segmentIcon = Icon(CustomIcons.privatecar, size: 50, color: Theme.of(context).colorScheme.primary);
-                  } else if(vehicleSegments[index]['NAME'].toString().contains('TWO WHEELER')) {
-                    segmentIcon = Icon(CustomIcons.twowheeler, size: 50, color: Theme.of(context).colorScheme.primary);
-                  } else {
-                    segmentIcon = Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary);
-                  }
+                  int iconValue = int.parse(vehicleSegments[index]['ICONVALUE'].toString());
+                  double customIconSize = double.parse(vehicleSegments[index]['ICONSIZE'].toString());
                   return Container(
                     child: Card(
                       elevation: 3.0,
                       shape: RoundedRectangleBorder(
                         borderRadius : BorderRadius.all(Radius.circular(5)),
-                        side: BorderSide(width: 1, color: Theme.of(context).colorScheme.primary)
                       ),
                       child: Container(
                         padding: const EdgeInsets.all(12.0),
-                        child: Column(
+                        child: Column (
                           children: [
-                            Text(vehicleSegments[index]['NAME'], textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
-                            Transform(
-                              alignment: Alignment.center,
-                              transform: Matrix4.rotationY(pi),
-                              child: IconButton(icon: segmentIcon, onPressed: () {
-                                Navigator.push(context, MaterialPageRoute(
-                                    builder: (_) => FinanceApplicationForm(
-                                        name: widget.name,
-                                        mobile: widget.mobile,
-                                        vehiclesegmentindex: index,
-                                        vehiclesegment: vehicleSegments[index]['NAME']
-                                    )
-                                ));
-                              }),
+                            SizedBox(
+                              height: 25,
+                              child: Text(vehicleSegments[index]['NAME'], textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500))
                             ),
+                            IconButton(icon: Icon(IconData(iconValue, fontFamily: 'CustomIcons', fontPackage: null), color: Theme.of(context).colorScheme.primary), iconSize: customIconSize, onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(
+                                builder: (_) => FinanceApplicationForm(
+                                  name: widget.name,
+                                  mobile: widget.mobile,
+                                  vehiclesegmentindex: index,
+                                  vehiclesegment: vehicleSegments[index]['NAME']
+                                )
+                              ));
+                            })
                           ],
-                        ),
+                        )
                       ),
                     ),
                   );
@@ -519,32 +508,34 @@ class _FinanceTabState extends State<FinanceTab> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius : BorderRadius.all(Radius.circular(5)),
-                ),
-                child: Container(
-                  height: 70,
-                  padding: const EdgeInsets.all(12.0),
-                  decoration: BoxDecoration(
-                    border: Border (
-                      left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
-                    ),
+              Container(
+                child: Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius : BorderRadius.all(Radius.circular(5)),
                   ),
-                  child: ListView (
-                    scrollDirection: Axis.horizontal,
-                    children: <Widget> [
-                      Container(
-                        alignment: Alignment.center,
-                        width: 280,
-                        child: Text('Get hassle-free financing for old and new commercial vehicles'),
+                  child: Container(
+                    height: 70,
+                    padding: const EdgeInsets.all(12.0),
+                    decoration: BoxDecoration(
+                      border: Border (
+                        left: BorderSide(width: 5, color: Theme.of(context).colorScheme.primary),
                       ),
-                      Transform(
-                        alignment: Alignment.center,
-                        transform: Matrix4.rotationY(pi),
-                        child: IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
-                      ),
-                    ],
+                    ),
+                    child: ListView (
+                      scrollDirection: Axis.horizontal,
+                      children: <Widget> [
+                        Container(
+                          alignment: Alignment.center,
+                          width: 280,
+                          child: Text('Get hassle-free financing for old and new commercial vehicles'),
+                        ),
+                        Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.rotationY(pi),
+                          child: IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -554,7 +545,10 @@ class _FinanceTabState extends State<FinanceTab> {
                 padding: const EdgeInsets.all(10.0),
                 child: Text('Vehicle Segments'),
               ),
-              segments
+              Container(
+                alignment: Alignment.topLeft,
+                child: segments,
+              ),
             ],
           ),
         );
@@ -603,8 +597,9 @@ class _FinanceApplicationFormState extends State<FinanceApplicationForm> {
       builder: (context, AsyncSnapshot<String> snapshot) {
         Set<String> uniqueManufacturers = Set();
         Set<String> uniqueVehicleNames = Set();
-        List<String> manufacturers = <String>['Select','Loading..'];
+        List<String> manufacturers = <String>['Select'];
         List<String> vehiclenames = <String>['Select'];
+        bool loading = true;
         if (snapshot.hasData) {
           Map<String, dynamic> jsonMap = jsonDecode(snapshot.data);
           List<dynamic> vehicleSegmentsDetails = jsonMap['VEHICLE SEGMENTS'][widget.vehiclesegmentindex]['DETAILS'];
@@ -614,8 +609,8 @@ class _FinanceApplicationFormState extends State<FinanceApplicationForm> {
               uniqueVehicleNames.add(vehicleSegmentsDetails[index]['ASSET DESCRIPTION']);
             }
           });
-          manufacturers.removeAt(1);
           manufacturers.addAll(uniqueManufacturers);
+          loading = false;
           if (!selectedManufacturer.contains('Select')) {
             uniqueVehicleNames.add('Others');
           }
@@ -669,9 +664,7 @@ class _FinanceApplicationFormState extends State<FinanceApplicationForm> {
                               ),
                               onChanged: (String changedManufacturer) {
                                 setState(() {
-                                  if(!changedManufacturer.contains('Loading..')) {
-                                    selectedManufacturer = changedManufacturer;
-                                  }
+                                  selectedManufacturer = changedManufacturer;
                                 });
                               },
                               items: manufacturers
@@ -690,7 +683,7 @@ class _FinanceApplicationFormState extends State<FinanceApplicationForm> {
                             ),
                           ),
                         ),
-                        IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                        loading ? CircularProgressIndicator() : IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
                       ],
                     ),
                   ),
@@ -925,7 +918,12 @@ class _InsuranceTabState extends State<InsuranceTab> {
             height: 40,
             alignment: Alignment.topLeft,
             padding: const EdgeInsets.all(10.0),
-            child: Text('Insurances Types'),
+            child: RichText(
+              text: TextSpan(
+                text: 'Insurances Types',
+                style: TextStyle(fontSize: 16, color: Colors.black),
+              )
+            )
           ),
           vehicleSegmentsFetched ? SizedBox() :
           Container(
@@ -1037,70 +1035,49 @@ class _InsuranceTabState extends State<InsuranceTab> {
             ),
           ),
           vehicleSegmentsFetched ?
-          SizedBox(
+          Align(
+            alignment: Alignment.topLeft,
             child: Container(
-                height: 360,
-                child: GridView.count(
-                    crossAxisCount: 3,
-                    scrollDirection: Axis.vertical,
-                    children: List.generate(vehicleSegments.length,(index) {
-                      Icon segmentIcon;
-                      if(vehicleSegments[index]['NAME'].toString().contains('CONSTRUCTION VEHICLE')) {
-                        segmentIcon = Icon(CustomIcons.constructionvehicle, size: 50, color: Theme.of(context).colorScheme.primary);
-                      } else if(vehicleSegments[index]['NAME'].toString().contains('FARM EQUIPMENT')) {
-                        segmentIcon = Icon(CustomIcons.farmequipment, size: 30, color: Theme.of(context).colorScheme.primary);
-                      } else if(vehicleSegments[index]['NAME'].toString().contains('LCV')) {
-                        segmentIcon = Icon(CustomIcons.lcv, size: 50, color: Theme.of(context).colorScheme.primary);
-                      } else if(vehicleSegments[index]['NAME'].toString().contains('MACHINERY')) {
-                        segmentIcon = Icon(CustomIcons.machinery, size: 50, color: Theme.of(context).colorScheme.primary);
-                      } else if(vehicleSegments[index]['NAME'].toString().contains('MHCV')) {
-                        segmentIcon = Icon(CustomIcons.mhcv, size: 40, color: Theme.of(context).colorScheme.primary);
-                      } else if(vehicleSegments[index]['NAME'].toString().contains('PASSENGER 3WHEELER')) {
-                        segmentIcon = Icon(CustomIcons.threewheeler, size: 30, color: Theme.of(context).colorScheme.primary);
-                      } else if(vehicleSegments[index]['NAME'].toString().contains('PASSENGER COMMERCIAL')) {
-                        segmentIcon = Icon(CustomIcons.passengercommercial, size: 40, color: Theme.of(context).colorScheme.primary);
-                      } else if(vehicleSegments[index]['NAME'].toString().contains('PRIVATE CAR')) {
-                        segmentIcon = Icon(CustomIcons.privatecar, size: 50, color: Theme.of(context).colorScheme.primary);
-                      } else if(vehicleSegments[index]['NAME'].toString().contains('TWO WHEELER')) {
-                        segmentIcon = Icon(CustomIcons.twowheeler, size: 50, color: Theme.of(context).colorScheme.primary);
-                      } else {
-                        segmentIcon = Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary);
-                      }
-                      return Container(
-                        child: Card(
-                          elevation: 3.0,
-                          shape: RoundedRectangleBorder(
-                              borderRadius : BorderRadius.all(Radius.circular(5)),
-                              side: BorderSide(width: 1, color: Theme.of(context).colorScheme.primary)
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              children: [
-                                Text(vehicleSegments[index]['NAME'], textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
-                                ((vehicleSegments[index]['NAME']).toString().length > 13)? SizedBox() : SizedBox(height: 12),
-                                Transform(
-                                  alignment: Alignment.center,
-                                  transform: Matrix4.rotationY(pi),
-                                  child: IconButton(icon: segmentIcon, onPressed: () {
-                                    Navigator.push(context, MaterialPageRoute(
-                                        builder: (_) => InsuranceApplicationForm(
-                                            name: widget.name,
-                                            mobile: widget.mobile,
-                                            insurancetype: 'vehicle',
-                                            vehiclesegmentindex: index,
-                                            vehiclesegment: vehicleSegments[index]['NAME']
-                                        )
-                                    ));
-                                  }),
-                                ),
-                              ],
-                            ),
+              height: 360,
+              width: 360,
+              child: GridView.count(
+                  crossAxisCount: 3,
+                  scrollDirection: Axis.vertical,
+                  children: List.generate(vehicleSegments.length,(index) {
+                    int iconValue = int.parse(vehicleSegments[index]['ICONVALUE'].toString());
+                    double customIconSize = double.parse(vehicleSegments[index]['ICONSIZE'].toString());
+                    return Container(
+                      child: Card(
+                        elevation: 3.0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius : BorderRadius.all(Radius.circular(5))
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                height: 25,
+                                child: Text(vehicleSegments[index]['NAME'], textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
+                              ),
+                              IconButton(icon: Icon(IconData(iconValue, fontFamily: 'CustomIcons', fontPackage: null), color: Theme.of(context).colorScheme.primary), iconSize: customIconSize, onPressed: () {
+                                Navigator.push(context, MaterialPageRoute(
+                                    builder: (_) => InsuranceApplicationForm(
+                                        name: widget.name,
+                                        mobile: widget.mobile,
+                                        insurancetype: 'vehicle',
+                                        vehiclesegmentindex: index,
+                                        vehiclesegment: vehicleSegments[index]['NAME']
+                                    )
+                                ));
+                              }),
+                            ],
                           ),
                         ),
-                      );
-                    })
-                ),
+                      ),
+                    );
+                  })
+              ),
             )
           ) : vehicleInsurancePressed ?
           SizedBox(
@@ -1159,7 +1136,8 @@ class _InsuranceApplicationFormState extends State<InsuranceApplicationForm> {
         builder: (context, AsyncSnapshot<String> snapshot) {
           Set<String> uniqueManufacturers = Set();
           Set<String> uniqueVehicleNames = Set();
-          List<String> manufacturers = <String>['Select','Loading..'];
+          bool loading = true;
+          List<String> manufacturers = <String>['Select'];
           List<String> vehiclenames = <String>['Select'];
           List<String> vehiclemodels = <String>['Select','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020'];
           if (snapshot.hasData && widget.insurancetype.contains('vehicle')) {
@@ -1171,8 +1149,8 @@ class _InsuranceApplicationFormState extends State<InsuranceApplicationForm> {
                 uniqueVehicleNames.add(vehicleSegmentsDetails[index]['ASSET DESCRIPTION']);
               }
             });
-            manufacturers.removeAt(1);
             manufacturers.addAll(uniqueManufacturers);
+            loading = false;
             if (!selectedManufacturer.contains('Select')) {
               uniqueVehicleNames.add('Others');
             }
@@ -1248,9 +1226,7 @@ class _InsuranceApplicationFormState extends State<InsuranceApplicationForm> {
                                 ),
                                 onChanged: (String changedManufacturer) {
                                   setState(() {
-                                    if(!changedManufacturer.contains('Loading..')) {
-                                      selectedManufacturer = changedManufacturer;
-                                    }
+                                    selectedManufacturer = changedManufacturer;
                                   });
                                 },
                                 items: manufacturers
@@ -1269,7 +1245,7 @@ class _InsuranceApplicationFormState extends State<InsuranceApplicationForm> {
                               ),
                             ),
                           ),
-                          IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
+                          loading ? CircularProgressIndicator() : IconButton(icon: Icon(CustomIcons.truck, color: Theme.of(context).colorScheme.primary), onPressed: null),
                         ],
                       ),
                     ) : SizedBox(),
